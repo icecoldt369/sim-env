@@ -1,13 +1,16 @@
 import streamlit as st
 #import replicate
 from langchain import PromptTemplate, HuggingFaceHub, LLMChain
+from transformers import AutoTokenizer, AutoModelForCausalLM, pipeline
+import torch
 import os
 import sys
+
 
 # App title
 st.set_page_config(page_title="🦙💬 Prompt Chatbot")
 
-# Replicate Credentials
+#  Credentials
 with st.sidebar:
     st.title('🦙💬 Prompt LLaMA 2')
     st.write('by Tevy Kuch')
@@ -21,22 +24,33 @@ with st.sidebar:
         api_token = st.secrets['HUGGINGFACEHUB_API_TOKEN']
     else:
         api_token = st.text_input(
-            'Enter Replicate API token:', type='password')
+            'Enter API token:', type='password')
         if not (api_token.startswith('r8_') and len(api_token) == 40):
             st.warning('Please enter your credentials!', icon='⚠️')
         else:
             st.success('Proceed to entering your prompt message!', icon='👉')
 
+
+
     # Refactored from https://github.com/a16z-infra/llama2-chatbot
     st.subheader('Models and parameters')
     selected_model = st.sidebar.selectbox('Choose a Llama2 model', [
-                                          'Llama2-7B', 'Llama2-13B', 'Llama2-70B'], key='selected_model')
+    'Llama2-7B', 'Llama2-13B', 'Llama2-70B'], key='selected_model')
+
     if selected_model == 'Llama2-7B':
-        llm = 'a16z-infra/llama7b-v2-chat:4f0a4744c7295c024a1de15e1a63c880d3da035fa1f49bfd344fe076074c8eea'
+        model_name = "meta-llama/Llama-2-7b-chat"  
     elif selected_model == 'Llama2-13B':
-        llm = 'a16z-infra/llama13b-v2-chat:df7690f1994d94e96ad9d568eac121aecf50684a0b0963b25a41cc40061269e5'
+        model_name = 'a16z-infra/llama13b-v2-chat:df7690f1994d94e96ad9d568eac121aecf50684a0b0963b25a41cc40061269e5'
     else:
-        llm = 'replicate/llama70b-v2-chat:e951f18578850b652510200860fc4ea62b3b16fac280f83ff32282f87bbd2e48'
+        model_name = 'replicate/llama70b-v2-chat:e951f18578850b652510200860fc4ea62b3b16fac280f83ff32282f87bbd2e48'
+
+    # Load the tokenizer and model
+    model_name = "meta-llama/Llama-2-7b-chat"  
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    model = AutoModelForCausalLM.from_pretrained(model_name)
+
+
+    llm_chain = pipeline("text-generation", model=model, tokenizer=tokenizer)
 
     # the larger the length, the more money
     temperature = st.sidebar.slider(
